@@ -1,18 +1,16 @@
 defmodule PersistentEts do
-  @moduledoc """
-  Documentation for PersistentEts.
-  """
+  def new(module, opts) do
+    {:ok, pid} = Supervisor.start_child(PersistentEts.Supervisor, [module, opts])
+    PersistentEts.TableManager.borrow(pid)
+  end
 
-  @doc """
-  Hello world.
+  def give_away(table, pid, data) do
+    PersistentEts.TableManager.transfer(table, pid, data)
+    true
+  end
 
-  ## Examples
-
-      iex> PersistentEts.hello
-      :world
-
-  """
-  def hello do
-    :world
+  def delete(table) do
+    PersistentEts.TableManager.return(table)
+    true
   end
 end
