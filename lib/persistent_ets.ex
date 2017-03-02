@@ -14,6 +14,17 @@ defmodule PersistentEts do
   Like with regular ets table, the table is destroyed once the owning process
   (the one that called `PersistentEts.new/3`) dies, but the table data is persisted
   so it will be re-read when table is opened again.
+
+  ## Example
+
+      pid = spawn(fn ->
+        :foo = PersistentEts.new(:foo, "table.tab", [:named_table])
+        :ets.insert(:foo, [a: 1])
+        Process.exit(self(), :diediedie)
+      end)
+      PersistentEts.new(:foo, "table.tab", [:named_table])
+      [a: 1] = :ets.tab2list(:foo)
+
   """
 
   @type tab :: :ets.tab
@@ -37,11 +48,11 @@ defmodule PersistentEts do
   a new table is created. Since options a table was created with are persisted
   alongside the table data, if the options the table was created with
   differ from the current options an error occurs. It's advised to manually
-  transfer the data to the new table, with new options.
+  transfer the data to the new table, with new options, if a change if options
+  is needed.
 
   If the table was created with extended info, it will be read using the verify
-  option. For information on what this means, refer to
-  [`:ets.file2tab/2`](http://erlang.org/doc/man/ets.html#file2tab-2).
+  option. For information on what this means, refer to `:ets.file2tab/2`.
 
   Changing the `:heir` option on the returned table is not supported, since it's
   leveraged by the persistence mechanism for correct operation.
@@ -52,8 +63,7 @@ defmodule PersistentEts do
     * `:persist_every` - how often to write the table to the file (default: 5_000),
     * `:persist_opts` - options passed to `:ets.tab2file/3` when saving the table
 
-  For other options refer to the
-  [`:ets.new/2`](http://erlang.org/doc/man/ets.html#new-2) documentation.
+  For other options refer to the `:ets.new/2` documentation.
 
   The `:heir` option is not supported as it's leveraged by the persistence system
   to guarantee the best possible durability.
@@ -79,8 +89,7 @@ defmodule PersistentEts do
 
   The old owner is unlinked from the manager process and the new onwer is linked.
 
-  See [`:ets.give_away/3`](http://erlang.org/doc/man/ets.html#give_away-3)
-  for more information.
+  See `:ets.give_away/3` for more information.
   """
   @spec give_away(tab, pid, term) :: true
   def give_away(table, pid, data) do
@@ -90,6 +99,8 @@ defmodule PersistentEts do
 
   @doc """
   Deletes the entire table `table`.
+
+  See `:ets.delete/1` for more information.
   """
   @spec delete(tab) :: true
   def delete(table) do

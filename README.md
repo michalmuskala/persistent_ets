@@ -21,8 +21,8 @@ so it will be re-read when table is opened again.
 pid = spawn(fn -> 
   :foo = PersistentEts.new(:foo, "table.tab", [:named_table])
   :ets.insert(:foo, [a: 1])
-  Process.exit(self(), :diediedie)
 end)
+Process.exit(pid, :diediedie)
 PersistentEts.new(:foo, "table.tab", [:named_table])
 [a: 1] = :ets.tab2list(:foo)
 ```
