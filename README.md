@@ -27,6 +27,12 @@ PersistentEts.new(:foo, "table.tab", [:named_table])
 [a: 1] = :ets.tab2list(:foo)
 ```
 
+## Why not Dets?
+
+With Dets every operation (read or write) hits the disk. For many application such a performance penalty (compared to ets) is not acceptable. Furthermore Dets tables are limited to 2GB. Dets doesn't support the `ordered_set` table type either.
+
+With PersistentEts, the table remains in memory, so all read and write operations have the same performance they would have with pure Ets. Only periodically the table state is saved to a file. There's also no file limit, besides the memory and disk limitations. Since it's a regular Ets table, all types are fully supported.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
