@@ -9,14 +9,18 @@ defmodule PersistentEts.TableManager do
     GenServer.start_link(__MODULE__, {mod, table_opts}, opts)
   end
 
-  def borrow(server, timeout \\ 5_000) do
-    ref = make_ref()
-    GenServer.cast(server, {:borrow, self(), ref})
+  def borrow(pid, timeout \\ 5_000) do
+    ref = Process.monitor(pid)
+    GenServer.cast(pid, {:borrow, self(), ref})
     receive do
       {:"ETS-TRANSFER", table, _from, ^ref} ->
+        Process.demonitor(ref, [:flush])
         table
+      {:DOWN, ^ref, _, _, reason} ->
+        exit(reason)
     after
       timeout ->
+        Process.demonitor(ref, [:flush])
         exit(:timeout)
     end
   end
@@ -30,13 +34,18 @@ defmodule PersistentEts.TableManager do
   end
 
   defp give_away_call(table, data, timeout \\ 5_000) do
-    ref = make_ref()
-    :ets.give_away(table, manager(table), {ref, data})
+    pid = manager(table)
+    ref = Process.monitor(pid)
+    :ets.give_away(table, pid, {ref, data})
     receive do
       ^ref ->
+        Process.demonitor(ref, [:flush])
         :ok
+      {:DOWN, ^ref, _, _, reason} ->
+        exit(reason)
     after
       timeout ->
+        Process.demonitor(ref, [:flush])
         exit(:timeout)
     end
   end
