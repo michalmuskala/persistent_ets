@@ -35,6 +35,10 @@ defmodule PersistentEts.TableManager do
     give_away_call(table, {:transfer, pid, data})
   end
 
+  def flush(table) do
+    GenServer.call(manager(table), :flush)
+  end
+
   defp give_away_call(table, data, timeout \\ 5_000) do
     pid = manager(table)
     ref = Process.monitor(pid)
@@ -85,6 +89,11 @@ defmodule PersistentEts.TableManager do
     state = persist(%{state | timer: nil})
     :ets.give_away(state.table, pid, ref)
     {:noreply, state}
+  end
+
+  @doc false
+  def handle_call(:flush, _from, state) do
+    {:reply, :ok, persist(state, sync: true)}
   end
 
   @doc false
@@ -159,13 +168,17 @@ defmodule PersistentEts.TableManager do
     [state.type, state.protection, keypos: state.keypos] ++ state.table_opts
   end
 
-  defp persist(%{table: nil} = state) do
+  defp persist(state, extra \\ [])
+
+  defp persist(%{table: nil} = state, _extra) do
     state
   end
-  defp persist(state) do
-    :ets.tab2file(state.table, state.path, state.persist_opts)
-    Process.send_after(self(), :persist, state.persist_every)
-    state
+  defp persist(state, extra) do
+    if state.timer, do: Process.cancel_timer(state.timer)
+    opts = Keyword.merge(state.persist_opts, extra)
+    :ok = :ets.tab2file(state.table, state.path, opts)
+    ref = Process.send_after(self(), :persist, state.persist_every)
+    %{state | timer: ref}
   end
 
   defp open_table(mod, path, opts) do

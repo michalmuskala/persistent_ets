@@ -188,6 +188,28 @@ defmodule PersistentEts.TableManagerTest do
     end)
   end
 
+  test "flush dumps the table immediately" do
+    in_tmp(fn path ->
+      Process.flag(:trap_exit, true)
+      pid = start_manager(path, [:named_table, :public])
+      parent = self()
+
+      spawn_link(fn ->
+        TableManager.borrow(pid)
+        send(parent, :ready)
+        :timer.sleep(:infinity)
+      end)
+
+      assert_receive :ready
+      :ets.insert(__MODULE__, [a: 1])
+      TableManager.flush(__MODULE__)
+      assert_file Path.join(path, "table.tab")
+      Process.exit(pid, :kill)
+      start_manager(path, [:named_table, :public])
+      assert [a: 1] == :ets.tab2list(__MODULE__)
+    end)
+  end
+
   defp start_manager(path, opts \\ []) do
     path = Path.join(path, "table.tab")
     with {:ok, pid} <- TableManager.start_link(__MODULE__, path, opts) do

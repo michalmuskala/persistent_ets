@@ -20,8 +20,8 @@ defmodule PersistentEts do
       pid = spawn(fn ->
         :foo = PersistentEts.new(:foo, "table.tab", [:named_table])
         :ets.insert(:foo, [a: 1])
-        Process.exit(self(), :diediedie)
       end)
+      Process.exit(pid, :diediedie)
       PersistentEts.new(:foo, "table.tab", [:named_table])
       [a: 1] = :ets.tab2list(:foo)
 
@@ -95,6 +95,17 @@ defmodule PersistentEts do
   def give_away(table, pid, data) do
     PersistentEts.TableManager.transfer(table, pid, data)
     true
+  end
+
+  @doc """
+  Synchronously dumps the table `table` to disk.
+
+  This can be used to make sure all changes have been persisted, before continuing.
+  The persistence loop will be restarted.
+  """
+  @spec flush(tab) :: :ok
+  def flush(table) do
+    PersistentEts.TableManager.flush(table)
   end
 
   @doc """
