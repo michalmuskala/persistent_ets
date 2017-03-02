@@ -184,8 +184,8 @@ defmodule PersistentEts.TableManagerTest do
   end
 
   defp start_manager(path, opts \\ []) do
-    opts = [path: Path.join(path, "table.tab")] ++ opts
-    with {:ok, pid} <- TableManager.start_link(__MODULE__, opts) do
+    path = Path.join(path, "table.tab")
+    with {:ok, pid} <- TableManager.start_link(__MODULE__, path, opts) do
       pid
     end
   end

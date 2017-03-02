@@ -1,12 +1,13 @@
 defmodule PersistentEts.TableManager do
+  @moduledoc false
   use GenServer
 
   require Logger
 
   ## Public interface
 
-  def start_link(mod, table_opts, opts \\ []) do
-    GenServer.start_link(__MODULE__, {mod, table_opts}, opts)
+  def start_link(mod, path, table_opts, opts \\ []) do
+    GenServer.start_link(__MODULE__, {mod, path, table_opts}, opts)
   end
 
   def borrow(pid, timeout \\ 5_000) do
@@ -63,13 +64,13 @@ defmodule PersistentEts.TableManager do
              table_opts: [], persist_opts: [], persist_every: 60_000]
 
   @doc false
-  def init({mod, opts}) do
+  def init({mod, path, opts}) do
     Process.flag(:trap_exit, true)
     state = Enum.reduce(opts, %__MODULE__{}, &build_state/2)
     table = :ets.new(mod, state.table_opts)
     state = put_in state.timer, Process.send_after(self(), :not_borrowed, 5_000)
     # We don't start persistence loop yet - only after table is borrowed
-    {:ok, %{state | table: table}}
+    {:ok, %{state | table: table, path: String.to_charlist(path)}}
   end
 
   # We link to the borrowing process - if we die they should too, table is no
@@ -135,8 +136,6 @@ defmodule PersistentEts.TableManager do
     persist(state)
   end
 
-  defp build_state({:path, path}, state) when is_binary(path),
-    do: %{state | path: String.to_charlist(path)}
   defp build_state({:persist_every, period}, state) when is_integer(period),
     do: %{state | persist_every: period}
   defp build_state({:persist_opts, opts}, state) when is_list(opts),
