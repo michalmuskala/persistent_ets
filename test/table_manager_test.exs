@@ -60,10 +60,11 @@ defmodule PersistentEts.TableManagerTest do
 
   test "saves the table before dying" do
     in_tmp(fn path ->
+      Process.flag(:trap_exit, true)
       pid = start_manager(path, [:named_table])
       parent = self()
 
-      spawn_link(fn ->
+      owner = spawn_link(fn ->
         TableManager.borrow(pid);
         :ets.insert(__MODULE__, {:foo})
         send(parent, :ready)
@@ -73,7 +74,9 @@ defmodule PersistentEts.TableManagerTest do
       assert_receive :ready
       assert [{:foo}] = :ets.tab2list(__MODULE__)
       Process.exit(pid, :shutdown)
-      :ets.file2tab(to_charlist(Path.join(path, "table.tab")))
+      assert_receive {:EXIT, ^owner, :shutdown}
+      assert_file Path.join(path, "table.tab")
+      start_manager(path, [:named_table])
       assert [{:foo}] = :ets.tab2list(__MODULE__)
     end)
   end
@@ -95,9 +98,10 @@ defmodule PersistentEts.TableManagerTest do
       assert_receive :ready
       assert [{:foo}] = :ets.tab2list(__MODULE__)
       :timer.sleep(150)
+      assert_file Path.join(path, "table.tab")
       :ets.insert(__MODULE__, {:bar})
       Process.exit(pid, :kill)
-      :ets.file2tab(to_charlist(Path.join(path, "table.tab")))
+      start_manager(path, [:named_table, :public, persist_every: 100])
       assert [{:foo}] = :ets.tab2list(__MODULE__)
     end)
   end
@@ -138,7 +142,8 @@ defmodule PersistentEts.TableManagerTest do
       send(owner, :delete)
       assert_receive :ready
       assert Process.alive?(owner)
-      :ets.file2tab(to_charlist(Path.join(path, "table.tab")))
+      assert_file Path.join(path, "table.tab")
+      start_manager(path, [:named_table])
       assert [{:foo}] = :ets.tab2list(__MODULE__)
     end)
   end

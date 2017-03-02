@@ -7,6 +7,7 @@ defmodule PersistentEts.TableManager do
   ## Public interface
 
   def start_link(mod, path, table_opts, opts \\ []) do
+    path = String.to_charlist(path)
     GenServer.start_link(__MODULE__, {mod, path, table_opts}, opts)
   end
 
@@ -60,17 +61,18 @@ defmodule PersistentEts.TableManager do
 
   ## Callbacks
 
-  defstruct [:table, :path, :timer,
+  defstruct [:table, :path, :timer, type: :set, protection: :protected,
+             keypos: 1,
              table_opts: [], persist_opts: [], persist_every: 60_000]
 
   @doc false
   def init({mod, path, opts}) do
     Process.flag(:trap_exit, true)
     state = Enum.reduce(opts, %__MODULE__{}, &build_state/2)
-    table = :ets.new(mod, state.table_opts)
+    table = open_table(mod, path, table_opts(state))
     state = put_in state.timer, Process.send_after(self(), :not_borrowed, 5_000)
     # We don't start persistence loop yet - only after table is borrowed
-    {:ok, %{state | table: table, path: String.to_charlist(path)}}
+    {:ok, %{state | table: table, path: path}}
   end
 
   # We link to the borrowing process - if we die they should too, table is no
@@ -144,8 +146,18 @@ defmodule PersistentEts.TableManager do
     do: raise(ArgumentError, "PeristentEts does not support the :heir ets option")
   defp build_state(:private, _state),
     do: raise(ArgumentError, "PersistentEts does not support private ets tables")
+  defp build_state(protection, state) when protection in [:protected, :public],
+    do: %{state | protection: protection}
+  defp build_state(type, state) when type in [:bag, :duplicate_bag, :set, :ordered_set],
+    do: %{state | type: type}
+  defp build_state({:keypos, pos}, state),
+    do: %{state | keypos: pos}
   defp build_state(opt, state),
     do: update_in(state.table_opts, &[opt | &1])
+
+  defp table_opts(state) do
+    [state.type, state.protection, keypos: state.keypos] ++ state.table_opts
+  end
 
   defp persist(%{table: nil} = state) do
     state
@@ -154,6 +166,68 @@ defmodule PersistentEts.TableManager do
     :ets.tab2file(state.table, state.path, state.persist_opts)
     Process.send_after(self(), :persist, state.persist_every)
     state
+  end
+
+  defp open_table(mod, path, opts) do
+    if File.regular?(path) do
+      with {:ok, info} <- :ets.tabfile_info(path),
+           Enum.each(info, &check_info(&1, mod, opts)),
+           {:ok, table} <- :ets.file2tab(path, verify: verify?(info)) do
+        Enum.each(:ets.info(table), &check_info(&1, mod, opts))
+        table
+      else
+        {:error, reason} ->
+          raise ArgumentError, "#{path} is not a valid PersistentEts file: #{inspect reason}"
+      end
+    else
+      :ets.new(mod, opts)
+    end
+  end
+
+  defp verify?(opts), do: Enum.any?(opts, &match?({:extended_info, _}, &1))
+
+  defp check_info({:name, saved_name}, name, _opts) do
+    unless saved_name == name do
+      raise ArgumentError, "file was created with different table name"
+    end
+  end
+  defp check_info({:type, type}, _name, opts) do
+    unless type in opts do
+      raise ArgumentError, "file was created with different table type"
+    end
+  end
+  defp check_info({:named_table, bool}, _name, opts) do
+    unless (:named_table in opts) == bool do
+      raise ArgumentError, "file was created with a different named table setting"
+    end
+  end
+  defp check_info({:protection, protection}, _name, opts) do
+    unless protection in opts do
+      raise ArgumentError, "file was created with different protection"
+    end
+  end
+  defp check_info({:compressed, bool}, _name, opts) do
+    unless (:compressed in opts) == bool do
+      raise ArgumentError, "file was created with a different compressed setting"
+    end
+  end
+  defp check_info({:keypos, pos}, _name, opts) do
+    unless {:keypos, pos} in opts do
+      raise ArgumentError, "file was created with different keypos setting"
+    end
+  end
+  defp check_info({:write_concurrency, bool}, _name, opts) do
+    unless !!opts[:write_concurrency] == bool do
+      raise ArgumentError, "file was created with different write_concurrency setting"
+    end
+  end
+  defp check_info({:read_concurrency, bool}, _name, opts) do
+    unless !!opts[:read_concurrency] == bool in opts do
+      raise ArgumentError, "file was created with different read_concurrency setting"
+    end
+  end
+  defp check_info(_info, _name, _opts) do
+    :ok
   end
 
   defp clean_unlink(pid) do
