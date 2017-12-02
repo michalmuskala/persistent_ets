@@ -235,7 +235,7 @@ defmodule PersistentEts.TableManager do
     end
   end
   defp check_info({:read_concurrency, bool}, _name, opts) do
-    unless !!opts[:read_concurrency] == bool in opts do
+    unless !!opts[:read_concurrency] == bool do
       raise ArgumentError, "file was created with different read_concurrency setting"
     end
   end
