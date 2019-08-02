@@ -60,7 +60,8 @@ defmodule PersistentEts do
   ## Options
 
     * `:path` (required) - where to store the table file,
-    * `:persist_every` - how often to write the table to the file (default: 5_000),
+    * `:persist_every` - how often to write the table to the file
+      in milliseconds (default: 5_000),
     * `:persist_opts` - options passed to `:ets.tab2file/3` when saving the table
 
   For other options refer to the `:ets.new/2` documentation.
@@ -72,7 +73,8 @@ defmodule PersistentEts do
   """
   @spec new(atom, Path.t, [option]) :: tab
   def new(module, path, opts) do
-    {:ok, pid} = Supervisor.start_child(PersistentEts.Supervisor, [module, path, opts])
+    child_spec = {PersistenEts.TableManager, {module, path, opts}}
+    {:ok, pid} = DynamicSupervisor.start_child(PersistentEts.Supervisor, child_spec)
     PersistentEts.TableManager.borrow(pid)
   end
 

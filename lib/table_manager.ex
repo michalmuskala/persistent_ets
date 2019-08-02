@@ -1,14 +1,14 @@
 defmodule PersistentEts.TableManager do
   @moduledoc false
-  use GenServer
+  use GenServer, restart: :temporary
 
   require Logger
 
   ## Public interface
 
-  def start_link(mod, path, table_opts, opts \\ []) do
+  def start_link({mod, path, table_opts}) do
     path = String.to_charlist(path)
-    GenServer.start_link(__MODULE__, {mod, path, table_opts}, opts)
+    GenServer.start_link(__MODULE__, {mod, path, table_opts})
   end
 
   def borrow(pid, timeout \\ 5_000) do

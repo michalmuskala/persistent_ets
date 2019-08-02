@@ -1,12 +1,12 @@
 defmodule PersistentEts.Mixfile do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.2.0"
 
   def project do
     [app: :persistent_ets,
      version: @version,
-     elixir: "~> 1.3",
+     elixir: "~> 1.5",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      elixirc_paths: elixirc_paths(Mix.env),

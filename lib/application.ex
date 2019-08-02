@@ -4,13 +4,7 @@ defmodule PersistentEts.Application do
   use Application
 
   def start(_type, _args) do
-    import Supervisor.Spec, warn: false
-
-    children = [
-      worker(PersistentEts.TableManager, [], restart: :temporary),
-    ]
-
-    opts = [strategy: :simple_one_for_one, name: PersistentEts.Supervisor]
-    Supervisor.start_link(children, opts)
+    opts = [strategy: :one_for_one, name: PersistentEts.Supervisor]
+    DynamicSupervisor.start_link(opts)
   end
 end
