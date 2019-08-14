@@ -73,7 +73,7 @@ defmodule PersistentEts do
   """
   @spec new(atom, Path.t, [option]) :: tab
   def new(module, path, opts) do
-    child_spec = {PersistenEts.TableManager, {module, path, opts}}
+    child_spec = {PersistentEts.TableManager, {module, path, opts}}
     {:ok, pid} = DynamicSupervisor.start_child(PersistentEts.Supervisor, child_spec)
     PersistentEts.TableManager.borrow(pid)
   end
