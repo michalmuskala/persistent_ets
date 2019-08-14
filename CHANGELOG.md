@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 (14.08.2019)
+
+### Bug fixes
+
+* fix `PersistentEts.new/3` (broken since `0.2.0`).
+
 ## 0.2.0 (02.08.2019)
 
 ### Changes
