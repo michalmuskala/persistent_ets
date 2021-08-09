@@ -158,6 +158,7 @@ defmodule PersistentEts.TableManagerTest do
 
   test "transfer sends the transfer message" do
     in_tmp(fn path ->
+      Process.flag(:trap_exit, true)
       pid = start_manager(path, [:named_table])
       parent = self()
 
@@ -168,6 +169,7 @@ defmodule PersistentEts.TableManagerTest do
       end)
 
       assert_receive {:"ETS-TRANSFER", __MODULE__, _, :foo}
+      exit_await(pid)
     end)
   end
 
