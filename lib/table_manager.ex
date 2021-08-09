@@ -37,6 +37,7 @@ defmodule PersistentEts.TableManager do
     receive do
       {:DOWN, ^ref, _, _, :normal} ->
         :ok
+
       {:DOWN, ^ref, _, _, reason} ->
         exit(reason)
     after
