@@ -79,8 +79,9 @@ defmodule PersistentEts.TableManagerTest do
       Process.exit(pid, :shutdown)
       assert_receive {:EXIT, ^owner, :shutdown}
       assert_file(Path.join(path, "table.tab"))
-      start_manager(path, [:named_table])
+      pid = start_manager(path, [:named_table])
       assert [{:foo}] = :ets.tab2list(__MODULE__)
+      exit_await(pid)
     end)
   end
 
@@ -103,9 +104,10 @@ defmodule PersistentEts.TableManagerTest do
       :timer.sleep(150)
       assert_file(Path.join(path, "table.tab"))
       :ets.insert(__MODULE__, {:bar})
-      Process.exit(pid, :kill)
-      start_manager(path, [:named_table, :public, persist_every: 100])
+      exit_await(pid)
+      pid = start_manager(path, [:named_table, :public, persist_every: 100])
       assert [{:foo}] = :ets.tab2list(__MODULE__)
+      exit_await(pid)
     end)
   end
 
@@ -127,6 +129,7 @@ defmodule PersistentEts.TableManagerTest do
 
   test "return persists table & shuts down the manager" do
     in_tmp(fn path ->
+      Process.flag(:trap_exit, true)
       pid = start_manager(path, [:named_table])
       parent = self()
 
@@ -147,8 +150,9 @@ defmodule PersistentEts.TableManagerTest do
       assert_receive :ready
       assert Process.alive?(owner)
       assert_file(Path.join(path, "table.tab"))
-      start_manager(path, [:named_table])
+      pid = start_manager(path, [:named_table])
       assert [{:foo}] = :ets.tab2list(__MODULE__)
+      exit_await(pid)
     end)
   end
 
@@ -211,8 +215,9 @@ defmodule PersistentEts.TableManagerTest do
       TableManager.flush(__MODULE__)
       assert_file(Path.join(path, "table.tab"))
       Process.exit(pid, :kill)
-      start_manager(path, [:named_table, :public])
+      pid = start_manager(path, [:named_table, :public])
       assert [a: 1] == :ets.tab2list(__MODULE__)
+      exit_await(pid)
     end)
   end
 
@@ -234,5 +239,10 @@ defmodule PersistentEts.TableManagerTest do
     after
       Process.flag(:trap_exit, old)
     end
+  end
+
+  defp exit_await(pid) do
+    Process.exit(pid, :kill)
+    assert_receive {:EXIT, ^pid, :killed}
   end
 end
