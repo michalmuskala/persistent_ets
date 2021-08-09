@@ -1,5 +1,5 @@
 defmodule PersistentEts.TableManagerTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   alias PersistentEts.TableManager
 
@@ -112,7 +112,7 @@ defmodule PersistentEts.TableManagerTest do
   test "does not allow starting private tables" do
     in_tmp(fn path ->
       assert_linked_raise(ArgumentError, fn ->
-        start_manager(path, [:private])
+        TableManager.start_link({__MODULE__, path, [:private]})
       end)
     end)
   end
@@ -120,7 +120,7 @@ defmodule PersistentEts.TableManagerTest do
   test "does not allow setting the heir option" do
     in_tmp(fn path ->
       assert_linked_raise(ArgumentError, fn ->
-        start_manager(path, [{:heir, self(), :foo}])
+        TableManager.start_link({__MODULE__, path, [{:heir, self(), :foo}]})
       end)
     end)
   end
@@ -219,9 +219,8 @@ defmodule PersistentEts.TableManagerTest do
   defp start_manager(path, opts \\ []) do
     path = Path.join(path, "table.tab")
 
-    with {:ok, pid} <- TableManager.start_link({__MODULE__, path, opts}) do
-      pid
-    end
+    assert {:ok, pid} = TableManager.start_link({__MODULE__, path, opts})
+    pid
   end
 
   defp assert_linked_raise(error, fun) do

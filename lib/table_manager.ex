@@ -29,22 +29,27 @@ defmodule PersistentEts.TableManager do
     end
   end
 
-  def return(table) do
-    give_away_call(table, :return)
-  end
-
-  def transfer(table, pid, data) do
-    give_away_call(table, {:transfer, pid, data})
-  end
-
-  def flush(table) do
-    GenServer.call(manager(table), :flush)
-  end
-
-  defp give_away_call(table, data, timeout \\ 5_000) do
+  def return(table, timeout \\ 5_000) do
     pid = manager(table)
     ref = Process.monitor(pid)
-    :ets.give_away(table, pid, {ref, data})
+    :ets.give_away(table, pid, :return)
+
+    receive do
+      {:DOWN, ^ref, _, _, :normal} ->
+        :ok
+      {:DOWN, ^ref, _, _, reason} ->
+        exit(reason)
+    after
+      timeout ->
+        Process.demonitor(ref, [:flush])
+        exit(:timeout)
+    end
+  end
+
+  def transfer(table, pid, data, timeout \\ 5_000) do
+    manager = manager(table)
+    ref = Process.monitor(manager)
+    :ets.give_away(table, manager, {ref, {:transfer, pid, data}})
 
     receive do
       ^ref ->
@@ -58,6 +63,10 @@ defmodule PersistentEts.TableManager do
         Process.demonitor(ref, [:flush])
         exit(:timeout)
     end
+  end
+
+  def flush(table) do
+    GenServer.call(manager(table), :flush)
   end
 
   defp manager(table) do
@@ -128,16 +137,15 @@ defmodule PersistentEts.TableManager do
       {:EXIT, ^pid, reason} ->
         {:stop, reason, state}
     after
-      0 ->
+      10 ->
         {:stop, :table_lost, state}
     end
   end
 
-  def handle_info({:"ETS-TRANSFER", tab, pid, {ref, :return}}, %{table: tab} = state) do
+  def handle_info({:"ETS-TRANSFER", tab, pid, :return}, %{table: tab} = state) do
     clean_unlink(pid)
     state = persist(state)
     :ets.delete(tab)
-    send(pid, ref)
     {:stop, :normal, %{state | table: nil}}
   end
 
