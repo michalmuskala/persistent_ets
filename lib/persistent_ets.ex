@@ -5,7 +5,8 @@ defmodule PersistentEts do
              |> Enum.fetch!(1)
 
   @type tab :: :ets.tab()
-  @type type :: :ets.type()
+  # :ets.type() is private for some reason
+  @type type :: :set | :ordered_set | :bag | :duplicate_bag
   @type access :: :public | :protected
   @type tweaks ::
           {:write_concurrency, boolean}

@@ -20,14 +20,20 @@ defmodule PersistentEts.Mixfile do
   end
 
   def application do
-    [applications: [:logger], mod: {PersistentEts.Application, []}]
+    [
+      extra_applications: [:logger],
+      mod: {PersistentEts.Application, []}
+    ]
   end
 
   defp elixirc_paths(:test), do: ["test/support", "lib"]
   defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
-    [{:ex_doc, "~> 0.14", only: :dev}]
+    [
+      {:ex_doc, "~> 0.14", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false}
+    ]
   end
 
   defp package do
