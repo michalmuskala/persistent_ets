@@ -18,7 +18,7 @@ defmodule PersistentEts.TableManagerTest do
       pid = start_manager(path, persist_opts: [sync: true])
       assert [] == File.ls!(path)
       TableManager.borrow(pid)
-      assert_file Path.join(path, "table.tab")
+      assert_file(Path.join(path, "table.tab"))
     end)
   end
 
@@ -28,11 +28,12 @@ defmodule PersistentEts.TableManagerTest do
       pid = start_manager(path)
       parent = self()
 
-      owner = spawn_link(fn ->
-        TableManager.borrow(pid);
-        send(parent, :ready)
-        :timer.sleep(:infinity)
-      end)
+      owner =
+        spawn_link(fn ->
+          TableManager.borrow(pid)
+          send(parent, :ready)
+          :timer.sleep(:infinity)
+        end)
 
       assert_receive :ready
       Process.exit(pid, :shutdown)
@@ -46,11 +47,12 @@ defmodule PersistentEts.TableManagerTest do
       pid = start_manager(path)
       parent = self()
 
-      owner = spawn_link(fn ->
-        TableManager.borrow(pid);
-        send(parent, :ready)
-        :timer.sleep(:infinity)
-      end)
+      owner =
+        spawn_link(fn ->
+          TableManager.borrow(pid)
+          send(parent, :ready)
+          :timer.sleep(:infinity)
+        end)
 
       assert_receive :ready
       Process.exit(owner, :shutdown)
@@ -64,18 +66,19 @@ defmodule PersistentEts.TableManagerTest do
       pid = start_manager(path, [:named_table])
       parent = self()
 
-      owner = spawn_link(fn ->
-        TableManager.borrow(pid);
-        :ets.insert(__MODULE__, {:foo})
-        send(parent, :ready)
-        :timer.sleep(:infinity)
-      end)
+      owner =
+        spawn_link(fn ->
+          TableManager.borrow(pid)
+          :ets.insert(__MODULE__, {:foo})
+          send(parent, :ready)
+          :timer.sleep(:infinity)
+        end)
 
       assert_receive :ready
       assert [{:foo}] = :ets.tab2list(__MODULE__)
       Process.exit(pid, :shutdown)
       assert_receive {:EXIT, ^owner, :shutdown}
-      assert_file Path.join(path, "table.tab")
+      assert_file(Path.join(path, "table.tab"))
       start_manager(path, [:named_table])
       assert [{:foo}] = :ets.tab2list(__MODULE__)
     end)
@@ -89,7 +92,7 @@ defmodule PersistentEts.TableManagerTest do
       parent = self()
 
       spawn_link(fn ->
-        TableManager.borrow(pid);
+        TableManager.borrow(pid)
         :ets.insert(__MODULE__, {:foo})
         send(parent, :ready)
         :timer.sleep(:infinity)
@@ -98,7 +101,7 @@ defmodule PersistentEts.TableManagerTest do
       assert_receive :ready
       assert [{:foo}] = :ets.tab2list(__MODULE__)
       :timer.sleep(150)
-      assert_file Path.join(path, "table.tab")
+      assert_file(Path.join(path, "table.tab"))
       :ets.insert(__MODULE__, {:bar})
       Process.exit(pid, :kill)
       start_manager(path, [:named_table, :public, persist_every: 100])
@@ -108,17 +111,17 @@ defmodule PersistentEts.TableManagerTest do
 
   test "does not allow starting private tables" do
     in_tmp(fn path ->
-      assert_linked_raise ArgumentError, fn ->
+      assert_linked_raise(ArgumentError, fn ->
         start_manager(path, [:private])
-      end
+      end)
     end)
   end
 
   test "does not allow setting the heir option" do
     in_tmp(fn path ->
-      assert_linked_raise ArgumentError, fn ->
+      assert_linked_raise(ArgumentError, fn ->
         start_manager(path, [{:heir, self(), :foo}])
-      end
+      end)
     end)
   end
 
@@ -127,22 +130,23 @@ defmodule PersistentEts.TableManagerTest do
       pid = start_manager(path, [:named_table])
       parent = self()
 
-      owner = spawn_link(fn ->
-        table = TableManager.borrow(pid)
-        :ets.insert(__MODULE__, {:foo})
-        send(parent, :ready)
-        assert_receive :delete
-        TableManager.return(table)
-        send(parent, :ready)
-        :timer.sleep(:infinity)
-      end)
+      owner =
+        spawn_link(fn ->
+          table = TableManager.borrow(pid)
+          :ets.insert(__MODULE__, {:foo})
+          send(parent, :ready)
+          assert_receive :delete
+          TableManager.return(table)
+          send(parent, :ready)
+          :timer.sleep(:infinity)
+        end)
 
       assert_receive :ready
       assert [{:foo}] = :ets.tab2list(__MODULE__)
       send(owner, :delete)
       assert_receive :ready
       assert Process.alive?(owner)
-      assert_file Path.join(path, "table.tab")
+      assert_file(Path.join(path, "table.tab"))
       start_manager(path, [:named_table])
       assert [{:foo}] = :ets.tab2list(__MODULE__)
     end)
@@ -169,17 +173,19 @@ defmodule PersistentEts.TableManagerTest do
       pid = start_manager(path, [:named_table])
       parent = self()
 
-      another = spawn_link(fn ->
-        assert_receive {:"ETS-TRANSFER", _, _, _}
-        send(parent, :ready)
-        :timer.sleep(:infinity)
-      end)
+      another =
+        spawn_link(fn ->
+          assert_receive {:"ETS-TRANSFER", _, _, _}
+          send(parent, :ready)
+          :timer.sleep(:infinity)
+        end)
 
-      owner = spawn_link(fn ->
-        table = TableManager.borrow(pid)
-        TableManager.transfer(table, another, :foo)
-        :timer.sleep(:infinity)
-      end)
+      owner =
+        spawn_link(fn ->
+          table = TableManager.borrow(pid)
+          TableManager.transfer(table, another, :foo)
+          :timer.sleep(:infinity)
+        end)
 
       assert_receive :ready
       Process.exit(pid, :shutdown)
@@ -201,9 +207,9 @@ defmodule PersistentEts.TableManagerTest do
       end)
 
       assert_receive :ready
-      :ets.insert(__MODULE__, [a: 1])
+      :ets.insert(__MODULE__, a: 1)
       TableManager.flush(__MODULE__)
-      assert_file Path.join(path, "table.tab")
+      assert_file(Path.join(path, "table.tab"))
       Process.exit(pid, :kill)
       start_manager(path, [:named_table, :public])
       assert [a: 1] == :ets.tab2list(__MODULE__)
@@ -212,6 +218,7 @@ defmodule PersistentEts.TableManagerTest do
 
   defp start_manager(path, opts \\ []) do
     path = Path.join(path, "table.tab")
+
     with {:ok, pid} <- TableManager.start_link({__MODULE__, path, opts}) do
       pid
     end
@@ -219,6 +226,7 @@ defmodule PersistentEts.TableManagerTest do
 
   defp assert_linked_raise(error, fun) do
     old = Process.flag(:trap_exit, true)
+
     try do
       fun.()
       assert_receive {:EXIT, _pid, {reason, stack}}

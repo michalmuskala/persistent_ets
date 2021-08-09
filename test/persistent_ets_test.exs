@@ -10,13 +10,16 @@ defmodule PersistentEtsTest do
       parent = self()
       file = Path.join(path, "table.tab")
 
-      pid = spawn(fn ->
-        PersistentEts.new(:foo, file, [:public, :named_table])
-        send(parent, :continue)
-        receive do
-          :continue -> :ok
-        end
-      end)
+      pid =
+        spawn(fn ->
+          PersistentEts.new(:foo, file, [:public, :named_table])
+          send(parent, :continue)
+
+          receive do
+            :continue -> :ok
+          end
+        end)
+
       assert_receive :continue
 
       :ets.insert(:foo, {:hello, :world})

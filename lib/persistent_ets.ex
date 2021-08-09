@@ -4,13 +4,13 @@ defmodule PersistentEts do
              |> String.split(~r/<!-- MDOC !-->/)
              |> Enum.fetch!(1)
 
-  @type tab :: :ets.tab
-  @type type :: :ets.type
+  @type tab :: :ets.tab()
+  @type type :: :ets.type()
   @type access :: :public | :protected
   @type tweaks ::
-    {:write_concurrency, boolean} |
-    {:read_concurrency, boolean} |
-    :compressed
+          {:write_concurrency, boolean}
+          | {:read_concurrency, boolean}
+          | :compressed
   @type persist_opt :: {:extended_info, [:md5sum | :object_count]} | {:sync, boolean}
   @type persistence :: {:persist_every, pos_integer} | {:persist_opts, [persist_opt]}
   @type option :: type | access | :named_table | {:keypos, pos_integer} | tweaks | persistence
@@ -48,7 +48,7 @@ defmodule PersistentEts do
   The `:private` option is not supported since the manager process needs access
   to the table in order to save it to the file.
   """
-  @spec new(atom, Path.t, [option]) :: tab
+  @spec new(atom, Path.t(), [option]) :: tab
   def new(module, path, opts) do
     child_spec = {PersistentEts.TableManager, {module, path, opts}}
     {:ok, pid} = DynamicSupervisor.start_child(PersistentEts.Supervisor, child_spec)

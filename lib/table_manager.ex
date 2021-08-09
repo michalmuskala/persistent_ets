@@ -14,10 +14,12 @@ defmodule PersistentEts.TableManager do
   def borrow(pid, timeout \\ 5_000) do
     ref = Process.monitor(pid)
     GenServer.cast(pid, {:borrow, self(), ref})
+
     receive do
       {:"ETS-TRANSFER", table, _from, ^ref} ->
         Process.demonitor(ref, [:flush])
         table
+
       {:DOWN, ^ref, _, _, reason} ->
         exit(reason)
     after
@@ -43,10 +45,12 @@ defmodule PersistentEts.TableManager do
     pid = manager(table)
     ref = Process.monitor(pid)
     :ets.give_away(table, pid, {ref, data})
+
     receive do
       ^ref ->
         Process.demonitor(ref, [:flush])
         :ok
+
       {:DOWN, ^ref, _, _, reason} ->
         exit(reason)
     after
@@ -65,16 +69,24 @@ defmodule PersistentEts.TableManager do
 
   ## Callbacks
 
-  defstruct [:table, :path, :timer, type: :set, protection: :protected,
-             keypos: 1,
-             table_opts: [], persist_opts: [], persist_every: 60_000]
+  defstruct [
+    :table,
+    :path,
+    :timer,
+    type: :set,
+    protection: :protected,
+    keypos: 1,
+    table_opts: [],
+    persist_opts: [],
+    persist_every: 60_000
+  ]
 
   @doc false
   def init({mod, path, opts}) do
     Process.flag(:trap_exit, true)
     state = Enum.reduce(opts, %__MODULE__{}, &build_state/2)
     table = open_table(mod, path, table_opts(state))
-    state = put_in state.timer, Process.send_after(self(), :not_borrowed, 5_000)
+    state = put_in(state.timer, Process.send_after(self(), :not_borrowed, 5_000))
     # We don't start persistence loop yet - only after table is borrowed
     {:ok, %{state | table: table, path: path}}
   end
@@ -129,7 +141,10 @@ defmodule PersistentEts.TableManager do
     {:stop, :normal, %{state | table: nil}}
   end
 
-  def handle_info({:"ETS-TRANSFER", tab, pid, {ref, {:transfer, to, data}}}, %{table: tab} = state) do
+  def handle_info(
+        {:"ETS-TRANSFER", tab, pid, {ref, {:transfer, to, data}}},
+        %{table: tab} = state
+      ) do
     clean_unlink(pid)
     Process.link(to)
     :ets.give_away(tab, to, data)
@@ -138,7 +153,7 @@ defmodule PersistentEts.TableManager do
   end
 
   def handle_info(other, state) do
-    Logger.warn "Unknown message received by #{inspect self()}: #{inspect other}"
+    Logger.warn("Unknown message received by #{inspect(self())}: #{inspect(other)}")
     {:noreply, state}
   end
 
@@ -149,18 +164,25 @@ defmodule PersistentEts.TableManager do
 
   defp build_state({:persist_every, period}, state) when is_integer(period),
     do: %{state | persist_every: period}
+
   defp build_state({:persist_opts, opts}, state) when is_list(opts),
     do: %{state | persist_opts: opts}
+
   defp build_state({:heir, _, _}, _state),
     do: raise(ArgumentError, "PeristentEts does not support the :heir ets option")
+
   defp build_state(:private, _state),
     do: raise(ArgumentError, "PersistentEts does not support private ets tables")
+
   defp build_state(protection, state) when protection in [:protected, :public],
     do: %{state | protection: protection}
+
   defp build_state(type, state) when type in [:bag, :duplicate_bag, :set, :ordered_set],
     do: %{state | type: type}
+
   defp build_state({:keypos, pos}, state),
     do: %{state | keypos: pos}
+
   defp build_state(opt, state),
     do: update_in(state.table_opts, &[opt | &1])
 
@@ -173,6 +195,7 @@ defmodule PersistentEts.TableManager do
   defp persist(%{table: nil} = state, _extra) do
     state
   end
+
   defp persist(state, extra) do
     if state.timer, do: Process.cancel_timer(state.timer)
     opts = Keyword.merge(state.persist_opts, extra)
@@ -190,7 +213,7 @@ defmodule PersistentEts.TableManager do
         table
       else
         {:error, reason} ->
-          raise ArgumentError, "#{path} is not a valid PersistentEts file: #{inspect reason}"
+          raise ArgumentError, "#{path} is not a valid PersistentEts file: #{inspect(reason)}"
       end
     else
       :ets.new(mod, opts)
@@ -204,47 +227,56 @@ defmodule PersistentEts.TableManager do
       raise ArgumentError, "file was created with different table name"
     end
   end
+
   defp check_info({:type, type}, _name, opts) do
     unless type in opts do
       raise ArgumentError, "file was created with different table type"
     end
   end
+
   defp check_info({:named_table, bool}, _name, opts) do
-    unless (:named_table in opts) == bool do
+    unless :named_table in opts == bool do
       raise ArgumentError, "file was created with a different named table setting"
     end
   end
+
   defp check_info({:protection, protection}, _name, opts) do
     unless protection in opts do
       raise ArgumentError, "file was created with different protection"
     end
   end
+
   defp check_info({:compressed, bool}, _name, opts) do
-    unless (:compressed in opts) == bool do
+    unless :compressed in opts == bool do
       raise ArgumentError, "file was created with a different compressed setting"
     end
   end
+
   defp check_info({:keypos, pos}, _name, opts) do
     unless {:keypos, pos} in opts do
       raise ArgumentError, "file was created with different keypos setting"
     end
   end
+
   defp check_info({:write_concurrency, bool}, _name, opts) do
     unless !!opts[:write_concurrency] == bool do
       raise ArgumentError, "file was created with different write_concurrency setting"
     end
   end
+
   defp check_info({:read_concurrency, bool}, _name, opts) do
     unless !!opts[:read_concurrency] == bool do
       raise ArgumentError, "file was created with different read_concurrency setting"
     end
   end
+
   defp check_info(_info, _name, _opts) do
     :ok
   end
 
   defp clean_unlink(pid) do
     Process.unlink(pid)
+
     receive do
       {:EXIT, ^pid, _} ->
         :ok
