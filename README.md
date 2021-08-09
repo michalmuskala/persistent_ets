@@ -1,6 +1,8 @@
 # PersistentEts
 
-Ets table backed by a persistence file
+<!-- MDOC !-->
+
+Ets table backed by a persistence file.
 
 The table is persisted using the `:ets.file2tab/2` and `:ets.tab2file/3`
 functions.
@@ -18,7 +20,7 @@ so it will be re-read when table is opened again.
 ## Example
 
 ```elixir
-pid = spawn(fn -> 
+pid = spawn(fn ->
   :foo = PersistentEts.new(:foo, "table.tab", [:named_table])
   :ets.insert(:foo, [a: 1])
 end)
@@ -26,6 +28,8 @@ Process.exit(pid, :diediedie)
 PersistentEts.new(:foo, "table.tab", [:named_table])
 [a: 1] = :ets.tab2list(:foo)
 ```
+
+<!-- MDOC !-->
 
 ## Why not Dets?
 
@@ -35,16 +39,27 @@ With PersistentEts, the table remains in memory, so all read and write operation
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `persistent_ets` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `:persistent_ets` to your list of
+dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:persistent_ets, "~> 0.1.0"}]
+  [
+    {:persistent_ets, "~> 0.1.0"}
+  ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/persistent_ets](https://hexdocs.pm/persistent_ets).
+## Copyright and License
 
+Copyright (c) 2017 Michał Muskała
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
