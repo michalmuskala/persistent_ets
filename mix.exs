@@ -15,7 +15,8 @@ defmodule PersistentEts.Mixfile do
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       package: package(),
-      docs: docs()
+      docs: docs(),
+      dialyzer: dialyzer()
     ]
   end
 
@@ -59,6 +60,12 @@ defmodule PersistentEts.Mixfile do
       source_url: @source_url,
       source_ref: "v#{@version}",
       canonical: "http://hexdocs.pm/persistent_ets"
+    ]
+  end
+
+  defp dialyzer do
+    [
+      plt_add_apps: [:ex_unit]
     ]
   end
 end
